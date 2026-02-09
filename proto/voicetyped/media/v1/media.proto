@@ -1,0 +1,291 @@
+syntax = "proto3";
+
+package voicetyped.media.v1;
+
+option go_package = "github.com/voicetyped/voicetyped/gen/voicetyped/media/v1;mediav1";
+
+import "voicetyped/common/v1/common.proto";
+import "google/protobuf/timestamp.proto";
+
+service MediaService {
+  // Room management.
+  rpc CreateRoom(CreateRoomRequest) returns (CreateRoomResponse);
+  rpc GetRoom(GetRoomRequest) returns (GetRoomResponse);
+  rpc ListRooms(ListRoomsRequest) returns (ListRoomsResponse);
+  rpc CloseRoom(CloseRoomRequest) returns (CloseRoomResponse);
+
+  // Peer management.
+  rpc JoinRoom(JoinRoomRequest) returns (JoinRoomResponse);
+  rpc LeaveRoom(LeaveRoomRequest) returns (LeaveRoomResponse);
+  rpc TrickleICE(TrickleICERequest) returns (TrickleICEResponse);
+
+  // Selective forwarding — subscription control.
+  rpc SubscribeTrack(SubscribeTrackRequest) returns (SubscribeTrackResponse);
+  rpc UnsubscribeTrack(UnsubscribeTrackRequest) returns (UnsubscribeTrackResponse);
+  rpc UpdateSubscription(UpdateSubscriptionRequest) returns (UpdateSubscriptionResponse);
+  rpc ListTracks(ListTracksRequest) returns (ListTracksResponse);
+
+  // Active speaker detection.
+  rpc SubscribeActiveSpeakers(SubscribeActiveSpeakersRequest) returns (stream ActiveSpeakersMessage);
+
+  // Mid-session SDP renegotiation.
+  rpc Renegotiate(RenegotiateRequest) returns (RenegotiateResponse);
+
+  // Audio subscription for ASR consumption.
+  rpc SubscribeAudio(SubscribeAudioRequest) returns (stream AudioStreamMessage);
+
+  // Inject audio into a room (e.g., TTS playback).
+  rpc PlayAudio(stream PlayAudioRequest) returns (PlayAudioResponse);
+
+  // SIP bridge.
+  rpc CreateSIPBridge(CreateSIPBridgeRequest) returns (CreateSIPBridgeResponse);
+}
+
+// Enums.
+
+enum TrackKind {
+  TRACK_KIND_UNSPECIFIED = 0;
+  TRACK_KIND_AUDIO = 1;
+  TRACK_KIND_VIDEO = 2;
+}
+
+enum VideoQuality {
+  VIDEO_QUALITY_UNSPECIFIED = 0;
+  VIDEO_QUALITY_LOW = 1;
+  VIDEO_QUALITY_MEDIUM = 2;
+  VIDEO_QUALITY_HIGH = 3;
+}
+
+enum EncryptionAlgorithm {
+  ENCRYPTION_ALGORITHM_UNSPECIFIED = 0;
+  ENCRYPTION_ALGORITHM_AES_128_GCM = 1;
+  ENCRYPTION_ALGORITHM_AES_256_GCM = 2;
+}
+
+// Track and subscription info.
+
+message TrackInfo {
+  string track_id = 1;
+  string peer_id = 2;
+  TrackKind kind = 3;
+  string mime_type = 4;
+  bool simulcast = 5;
+  bool svc = 6;
+  repeated VideoQuality available_layers = 7;
+  EncryptionInfo encryption = 8;
+  map<string, string> metadata = 9;
+}
+
+message SubscriptionInfo {
+  string subscription_id = 1;
+  string track_id = 2;
+  string publisher_peer_id = 3;
+  VideoQuality quality = 4;
+  int32 max_temporal_layer = 5;
+  int32 max_spatial_layer = 6;
+  bool paused = 7;
+}
+
+message EncryptionInfo {
+  EncryptionAlgorithm algorithm = 1;
+  uint32 key_id = 2;
+  bytes sender_key = 3;
+}
+
+message ActiveSpeaker {
+  string peer_id = 1;
+  float audio_level = 2;
+  bool voice_activity = 3;
+}
+
+// Room messages.
+
+message CreateRoomRequest {
+  string room_id = 1;
+  int32 max_peers = 2;
+  map<string, string> metadata = 3;
+  int32 max_publishers = 4;
+  bool e2ee_required = 5;
+  bool auto_subscribe_audio = 6;
+}
+
+message CreateRoomResponse {
+  string room_id = 1;
+  google.protobuf.Timestamp created_at = 2;
+}
+
+message GetRoomRequest {
+  string room_id = 1;
+}
+
+message GetRoomResponse {
+  string room_id = 1;
+  repeated PeerInfo peers = 2;
+  int32 max_peers = 3;
+  map<string, string> metadata = 4;
+  google.protobuf.Timestamp created_at = 5;
+}
+
+message ListRoomsRequest {}
+
+message ListRoomsResponse {
+  repeated RoomSummary rooms = 1;
+}
+
+message RoomSummary {
+  string room_id = 1;
+  int32 peer_count = 2;
+  int32 max_peers = 3;
+  google.protobuf.Timestamp created_at = 4;
+}
+
+message CloseRoomRequest {
+  string room_id = 1;
+}
+
+message CloseRoomResponse {}
+
+// Peer messages.
+
+message PeerInfo {
+  string peer_id = 1;
+  string state = 2;
+  map<string, string> metadata = 3;
+  int32 published_tracks = 4;
+  int32 subscribed_tracks = 5;
+  repeated TrackInfo tracks = 6;
+  repeated SubscriptionInfo subscriptions = 7;
+}
+
+message JoinRoomRequest {
+  string room_id = 1;
+  string peer_id = 2;
+  string sdp_offer = 3;
+  map<string, string> metadata = 4;
+  bool publish_video = 5;
+  bool publish_audio = 6;
+  bool simulcast = 7;
+  EncryptionInfo encryption = 8;
+  bool auto_subscribe_audio = 9;
+}
+
+message JoinRoomResponse {
+  string sdp_answer = 1;
+  voicetyped.common.v1.SessionInfo session_info = 2;
+  repeated TrackInfo available_tracks = 3;
+}
+
+message LeaveRoomRequest {
+  string room_id = 1;
+  string peer_id = 2;
+}
+
+message LeaveRoomResponse {}
+
+message TrickleICERequest {
+  string room_id = 1;
+  string peer_id = 2;
+  string candidate_json = 3;
+}
+
+message TrickleICEResponse {}
+
+// Selective forwarding messages.
+
+message SubscribeTrackRequest {
+  string room_id = 1;
+  string peer_id = 2;
+  string track_id = 3;
+  VideoQuality quality = 4;
+  int32 max_temporal_layer = 5;
+  int32 max_spatial_layer = 6;
+}
+
+message SubscribeTrackResponse {
+  SubscriptionInfo subscription = 1;
+}
+
+message UnsubscribeTrackRequest {
+  string room_id = 1;
+  string peer_id = 2;
+  string track_id = 3;
+}
+
+message UnsubscribeTrackResponse {}
+
+message UpdateSubscriptionRequest {
+  string room_id = 1;
+  string peer_id = 2;
+  string track_id = 3;
+  VideoQuality quality = 4;
+  int32 max_temporal_layer = 5;
+  int32 max_spatial_layer = 6;
+  bool paused = 7;
+}
+
+message UpdateSubscriptionResponse {
+  SubscriptionInfo subscription = 1;
+}
+
+message ListTracksRequest {
+  string room_id = 1;
+}
+
+message ListTracksResponse {
+  repeated TrackInfo tracks = 1;
+}
+
+// Active speaker messages.
+
+message SubscribeActiveSpeakersRequest {
+  string room_id = 1;
+}
+
+message ActiveSpeakersMessage {
+  repeated ActiveSpeaker speakers = 1;
+}
+
+// Renegotiation messages.
+
+message RenegotiateRequest {
+  string room_id = 1;
+  string peer_id = 2;
+  string sdp_offer = 3;
+}
+
+message RenegotiateResponse {
+  string sdp_answer = 1;
+}
+
+// Audio stream messages.
+
+message SubscribeAudioRequest {
+  string room_id = 1;
+  string peer_id = 2;
+}
+
+message AudioStreamMessage {
+  voicetyped.common.v1.AudioFrame frame = 1;
+  string peer_id = 2;
+}
+
+// SIP bridge messages.
+
+message CreateSIPBridgeRequest {
+  string room_id = 1;
+  string sip_uri = 2;
+}
+
+message CreateSIPBridgeResponse {
+  string bridge_peer_id = 1;
+}
+
+// PlayAudio streams audio frames into a room for playback.
+message PlayAudioRequest {
+  string room_id = 1;
+  voicetyped.common.v1.AudioFrame frame = 2;
+}
+
+message PlayAudioResponse {
+  int64 frames_played = 1;
+}

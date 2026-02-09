@@ -1,0 +1,115 @@
+name: example-ivr
+version: "1.0"
+description: A sample IVR dialog for demonstration
+
+variables:
+  caller_name: ""
+  intent: ""
+
+initial_state: greeting
+
+states:
+  greeting:
+    on_enter:
+      - type: play_tts
+        params:
+          text: "Welcome to Voicetyped. How can I help you today?"
+    transitions:
+      - event: speech
+        target: understand
+      - event: dtmf
+        condition: '{{ eq (printf "%c" .Event) "1" }}'
+        target: sales
+      - event: dtmf
+        condition: '{{ eq (printf "%c" .Event) "2" }}'
+        target: support
+    timeout: "15s"
+    timeout_next: no_input
+
+  understand:
+    on_enter:
+      - type: call_hook
+        params:
+          url: "http://localhost:9090/api/understand"
+          auth_type: bearer
+          auth_secret: "{{ .Variables.api_token }}"
+    transitions:
+      - event: hook_result
+        condition: '{{ eq (index .Result "intent") "sales" }}'
+        target: sales
+      - event: hook_result
+        condition: '{{ eq (index .Result "intent") "support" }}'
+        target: support
+      - event: hook_result
+        target: fallback
+      - event: hook_error
+        target: fallback
+
+  sales:
+    on_enter:
+      - type: play_tts
+        params:
+          text: "Connecting you to our sales team. Please hold."
+      - type: set_variable
+        params:
+          department: sales
+    transitions:
+      - event: tts_complete
+        target: transfer
+    timeout: "30s"
+    timeout_next: goodbye
+
+  support:
+    on_enter:
+      - type: play_tts
+        params:
+          text: "Connecting you to technical support. Please hold."
+      - type: set_variable
+        params:
+          department: support
+    transitions:
+      - event: tts_complete
+        target: transfer
+    timeout: "30s"
+    timeout_next: goodbye
+
+  transfer:
+    on_enter:
+      - type: call_hook
+        params:
+          url: "http://localhost:9090/api/transfer"
+    transitions:
+      - event: hook_result
+        target: goodbye
+      - event: hook_error
+        target: fallback
+
+  fallback:
+    on_enter:
+      - type: play_tts
+        params:
+          text: "I'm sorry, I didn't understand. Let me transfer you to an operator."
+    transitions:
+      - event: tts_complete
+        target: goodbye
+    timeout: "10s"
+    timeout_next: goodbye
+
+  no_input:
+    on_enter:
+      - type: play_tts
+        params:
+          text: "I didn't hear anything. Please try again."
+    transitions:
+      - event: tts_complete
+        target: greeting
+    timeout: "5s"
+    timeout_next: goodbye
+
+  goodbye:
+    on_enter:
+      - type: play_tts
+        params:
+          text: "Thank you for calling. Goodbye."
+      - type: hangup
+    terminal: true

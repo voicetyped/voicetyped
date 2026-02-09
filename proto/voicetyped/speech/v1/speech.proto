@@ -1,0 +1,119 @@
+syntax = "proto3";
+
+package voicetyped.speech.v1;
+
+option go_package = "github.com/voicetyped/voicetyped/gen/voicetyped/speech/v1;speechv1";
+
+import "voicetyped/common/v1/common.proto";
+
+service SpeechService {
+  // Bidi streaming transcription.
+  rpc Transcribe(stream TranscribeRequest) returns (stream TranscribeResponse);
+
+  // Server-streaming TTS.
+  rpc Synthesize(SynthesizeRequest) returns (stream SynthesizeResponse);
+
+  // Discovery.
+  rpc ListVoices(ListVoicesRequest) returns (ListVoicesResponse);
+  rpc ListBackends(ListBackendsRequest) returns (ListBackendsResponse);
+  rpc ListModels(ListModelsRequest) returns (ListModelsResponse);
+}
+
+// Transcribe messages.
+
+message TranscribeRequest {
+  oneof message {
+    TranscribeConfig config = 1;
+    voicetyped.common.v1.AudioFrame audio = 2;
+  }
+}
+
+message TranscribeConfig {
+  string session_id = 1;
+  string language = 2;
+  string backend = 3;
+  bool interim_results = 4;
+  int32 sample_rate = 5;
+  // Codec of the incoming audio (e.g., "audio/opus", "pcm").
+  // If set, the speech handler will decode to PCM before passing to the ASR engine.
+  string codec = 6;
+  string model = 7;
+}
+
+message TranscribeResponse {
+  string text = 1;
+  float confidence = 2;
+  bool is_final = 3;
+  repeated TranscribeSegment segments = 4;
+  string language = 5;
+}
+
+message TranscribeSegment {
+  string text = 1;
+  int32 start_ms = 2;
+  int32 end_ms = 3;
+  float confidence = 4;
+}
+
+// Synthesize messages.
+
+message SynthesizeRequest {
+  string text = 1;
+  string voice = 2;
+  string backend = 3;
+  int32 sample_rate = 4;
+  string model = 5;
+}
+
+message SynthesizeResponse {
+  voicetyped.common.v1.AudioFrame audio = 1;
+  bool done = 2;
+}
+
+// Discovery messages.
+
+message ListVoicesRequest {
+  string backend = 1;
+}
+
+message ListVoicesResponse {
+  repeated VoiceInfo voices = 1;
+}
+
+message VoiceInfo {
+  string id = 1;
+  string name = 2;
+  string language = 3;
+  string backend = 4;
+}
+
+message ListBackendsRequest {}
+
+message ListBackendsResponse {
+  repeated BackendInfo asr_backends = 1;
+  repeated BackendInfo tts_backends = 2;
+}
+
+message BackendInfo {
+  string name = 1;
+  string type = 2;
+  repeated string models = 3;
+  string default_model = 4;
+}
+
+message ListModelsRequest {
+  string backend = 1;
+  string type = 2; // "asr" or "tts"
+}
+
+message ListModelsResponse {
+  repeated ModelInfo models = 1;
+}
+
+message ModelInfo {
+  string id = 1;
+  string backend = 2;
+  string type = 3; // "asr" or "tts"
+  string display_name = 4;
+  bool is_default = 5;
+}

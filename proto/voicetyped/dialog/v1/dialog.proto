@@ -1,0 +1,93 @@
+syntax = "proto3";
+
+package voicetyped.dialog.v1;
+
+option go_package = "github.com/voicetyped/voicetyped/gen/voicetyped/dialog/v1;dialogv1";
+
+service DialogService {
+  rpc StartDialog(StartDialogRequest) returns (StartDialogResponse);
+  rpc SendEvent(SendEventRequest) returns (SendEventResponse);
+  rpc GetSession(GetSessionRequest) returns (GetSessionResponse);
+  rpc EndDialog(EndDialogRequest) returns (EndDialogResponse);
+  rpc ListDialogs(ListDialogsRequest) returns (ListDialogsResponse);
+}
+
+// StartDialog messages.
+
+message StartDialogRequest {
+  string session_id = 1;
+  string dialog_name = 2;
+  string initial_state = 3;
+  map<string, string> variables = 4;
+}
+
+message StartDialogResponse {
+  string session_id = 1;
+  string current_state = 2;
+  repeated ActionDirective actions = 3;
+}
+
+// SendEvent messages.
+
+message SendEventRequest {
+  string session_id = 1;
+  string event_type = 2;
+  string event_data = 3;
+}
+
+message SendEventResponse {
+  string previous_state = 1;
+  string current_state = 2;
+  bool terminal = 3;
+  repeated ActionDirective actions = 4;
+}
+
+// Session messages.
+
+message GetSessionRequest {
+  string session_id = 1;
+}
+
+message GetSessionResponse {
+  string session_id = 1;
+  string dialog_name = 2;
+  string current_state = 3;
+  map<string, string> variables = 4;
+  repeated StateRecord history = 5;
+}
+
+message EndDialogRequest {
+  string session_id = 1;
+}
+
+message EndDialogResponse {}
+
+// List messages.
+
+message ListDialogsRequest {}
+
+message ListDialogsResponse {
+  repeated DialogInfo dialogs = 1;
+}
+
+message DialogInfo {
+  string name = 1;
+  string version = 2;
+  string description = 3;
+  string initial_state = 4;
+  repeated string states = 5;
+}
+
+// Shared types.
+
+message ActionDirective {
+  string type = 1;
+  map<string, string> params = 2;
+}
+
+message StateRecord {
+  string from_state = 1;
+  string to_state = 2;
+  string trigger = 3;
+  string timestamp = 4;
+}

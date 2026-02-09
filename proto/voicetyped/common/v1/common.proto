@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+package voicetyped.common.v1;
+
+option go_package = "github.com/voicetyped/voicetyped/gen/voicetyped/common/v1;commonv1";
+
+import "google/protobuf/timestamp.proto";
+
+// AudioFrame carries a chunk of audio data.
+message AudioFrame {
+  bytes data = 1;
+  string codec = 2;
+  int32 sample_rate = 3;
+  int32 channels = 4;
+  int64 timestamp_ms = 5;
+}
+
+// SessionInfo describes an active media session.
+message SessionInfo {
+  string session_id = 1;
+  string room_id = 2;
+  string peer_id = 3;
+  string caller_id = 4;
+  string called_number = 5;
+  string protocol = 6;
+  google.protobuf.Timestamp created_at = 7;
+  map<string, string> metadata = 8;
+}
+
+// VideoFrame carries a chunk of video data.
+message VideoFrame {
+  bytes data = 1;
+  string codec = 2;
+  int32 width = 3;
+  int32 height = 4;
+  int64 timestamp_ms = 5;
+  uint32 key_id = 6;
+}
+
+// EventEnvelope is a generic event wrapper for streaming.
+message EventEnvelope {
+  string id = 1;
+  string type = 2;
+  string source = 3;
+  string session_id = 4;
+  google.protobuf.Timestamp timestamp = 5;
+  bytes data = 6;
+  map<string, string> metadata = 7;
+}

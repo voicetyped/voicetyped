@@ -1,0 +1,166 @@
+syntax = "proto3";
+
+package voicetyped.integration.v1;
+
+option go_package = "github.com/voicetyped/voicetyped/gen/voicetyped/integration/v1;integrationv1";
+
+import "voicetyped/common/v1/common.proto";
+import "google/protobuf/timestamp.proto";
+
+service IntegrationService {
+  // Webhook CRUD.
+  rpc CreateWebhook(CreateWebhookRequest) returns (CreateWebhookResponse);
+  rpc GetWebhook(GetWebhookRequest) returns (GetWebhookResponse);
+  rpc ListWebhooks(ListWebhooksRequest) returns (ListWebhooksResponse);
+  rpc UpdateWebhook(UpdateWebhookRequest) returns (UpdateWebhookResponse);
+  rpc DeleteWebhook(DeleteWebhookRequest) returns (DeleteWebhookResponse);
+
+  // Webhook operations.
+  rpc RotateSecret(RotateSecretRequest) returns (RotateSecretResponse);
+  rpc TestWebhook(TestWebhookRequest) returns (TestWebhookResponse);
+
+  // Delivery management.
+  rpc ListDeliveries(ListDeliveriesRequest) returns (ListDeliveriesResponse);
+  rpc ListDeadLetters(ListDeadLettersRequest) returns (ListDeadLettersResponse);
+  rpc ReplayDeadLetter(ReplayDeadLetterRequest) returns (ReplayDeadLetterResponse);
+
+  // Live event stream.
+  rpc SubscribeEvents(SubscribeEventsRequest) returns (stream voicetyped.common.v1.EventEnvelope);
+}
+
+// Webhook messages.
+
+message WebhookInfo {
+  string id = 1;
+  string name = 2;
+  string url = 3;
+  repeated string event_types = 4;
+  bool is_active = 5;
+  string description = 6;
+  int32 failure_count = 7;
+  string circuit_state = 8;
+  google.protobuf.Timestamp created_at = 9;
+}
+
+message CreateWebhookRequest {
+  string name = 1;
+  string url = 2;
+  repeated string event_types = 3;
+  string description = 4;
+}
+
+message CreateWebhookResponse {
+  WebhookInfo webhook = 1;
+  string secret = 2;
+}
+
+message GetWebhookRequest {
+  string id = 1;
+}
+
+message GetWebhookResponse {
+  WebhookInfo webhook = 1;
+}
+
+message ListWebhooksRequest {}
+
+message ListWebhooksResponse {
+  repeated WebhookInfo webhooks = 1;
+}
+
+message UpdateWebhookRequest {
+  string id = 1;
+  string name = 2;
+  string url = 3;
+  repeated string event_types = 4;
+  bool is_active = 5;
+  string description = 6;
+}
+
+message UpdateWebhookResponse {
+  WebhookInfo webhook = 1;
+}
+
+message DeleteWebhookRequest {
+  string id = 1;
+}
+
+message DeleteWebhookResponse {}
+
+// Webhook operations.
+
+message RotateSecretRequest {
+  string id = 1;
+}
+
+message RotateSecretResponse {
+  string new_secret = 1;
+}
+
+message TestWebhookRequest {
+  string id = 1;
+}
+
+message TestWebhookResponse {
+  bool success = 1;
+}
+
+// Delivery messages.
+
+message DeliveryInfo {
+  string id = 1;
+  string webhook_id = 2;
+  string event_id = 3;
+  string event_type = 4;
+  int32 response_code = 5;
+  int32 attempt_number = 6;
+  string status = 7;
+  string error = 8;
+  int64 duration_ms = 9;
+  google.protobuf.Timestamp created_at = 10;
+}
+
+message ListDeliveriesRequest {
+  string webhook_id = 1;
+  int32 limit = 2;
+  int32 offset = 3;
+}
+
+message ListDeliveriesResponse {
+  repeated DeliveryInfo deliveries = 1;
+}
+
+message DeadLetterInfo {
+  string id = 1;
+  string webhook_id = 2;
+  string event_id = 3;
+  string event_type = 4;
+  string payload = 5;
+  string last_error = 6;
+  int32 attempts = 7;
+  bool replayable = 8;
+  google.protobuf.Timestamp created_at = 9;
+}
+
+message ListDeadLettersRequest {
+  string webhook_id = 1;
+}
+
+message ListDeadLettersResponse {
+  repeated DeadLetterInfo dead_letters = 1;
+}
+
+message ReplayDeadLetterRequest {
+  string webhook_id = 1;
+  string dead_letter_id = 2;
+}
+
+message ReplayDeadLetterResponse {
+  bool success = 1;
+}
+
+// Event stream.
+
+message SubscribeEventsRequest {
+  repeated string event_types = 1;
+}
